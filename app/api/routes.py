@@ -376,8 +376,9 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_sessio
         provider_health = []
 
     return templates.TemplateResponse(
-        "dashboard.html",
-        {
+        request=request,
+        name="dashboard.html",
+        context={
             "request": request,
             "runs": runs,
             "total_runs": total_runs,
@@ -391,7 +392,7 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_sessio
 
 @router.get("/generate", response_class=HTMLResponse)
 async def generate_page(request: Request):
-    return templates.TemplateResponse("generate.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="generate.html", context={"request": request})
 
 
 @router.get("/review/{run_id}", response_class=HTMLResponse)
@@ -415,8 +416,9 @@ async def review_page(
     approval = approval_result.scalar_one_or_none()
 
     return templates.TemplateResponse(
-        "review.html",
-        {"request": request, "log": log, "approval": approval},
+        request=request,
+        name="review.html",
+        context={"request": request, "log": log, "approval": approval},
     )
 
 
@@ -437,4 +439,4 @@ async def logs_page(request: Request, session: AsyncSession = Depends(get_sessio
         select(ExecutionLog).order_by(desc(ExecutionLog.created_at)).limit(50)
     )
     runs = result.scalars().all()
-    return templates.TemplateResponse("logs.html", {"request": request, "runs": runs})
+    return templates.TemplateResponse(request=request, name="logs.html", context={"request": request, "runs": runs})
