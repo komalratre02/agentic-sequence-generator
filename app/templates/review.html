@@ -282,6 +282,9 @@
     <div class="stat-card">
       <div class="stat-label">RAG Chunks</div>
       <div class="stat-value">{{ log.rag_chunks_retrieved or 0 }}</div>
+      {% if not log.rag_chunks_retrieved %}
+      <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px; line-height:1.2;">No URL provided or site blocked bot</div>
+      {% endif %}
     </div>
     <div class="stat-card">
       <div class="stat-label">Est. Cost</div>

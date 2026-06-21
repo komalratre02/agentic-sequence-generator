@@ -11,6 +11,7 @@ import asyncio
 import logging
 import re
 import uuid
+import time
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
@@ -167,6 +168,7 @@ async def scrape_and_ingest(
     run_id: str,
     *,
     progress_callback=None,
+    metrics=None,
 ) -> int:
     """
     Scrape a company website, chunk content, embed, and upsert into Qdrant.
@@ -179,6 +181,7 @@ async def scrape_and_ingest(
     Returns:
         Number of chunks ingested into Qdrant.
     """
+    start_time = time.time()
     # Validate and normalise the URL
     is_valid, result = validate_url(company_url)
     if not is_valid:
@@ -265,11 +268,14 @@ async def scrape_and_ingest(
     # ── Embed & upsert ──────────────────────────────────────────────────
     points: list[PointStruct] = []
 
-    # Embed in batches to avoid overwhelming the API
-    for chunk in all_chunks:
-        vector = await embed_text(chunk["text"])
-        if not vector:
-            logger.warning("Embedding failed for chunk from %s", chunk["source"])
+    # Embed in parallel for speed
+    logger.info("Embedding %d chunks in parallel...", len(all_chunks))
+    embed_tasks = [embed_text(chunk["text"]) for chunk in all_chunks]
+    vectors = await asyncio.gather(*embed_tasks, return_exceptions=True)
+
+    for chunk, vector in zip(all_chunks, vectors):
+        if isinstance(vector, Exception) or not vector:
+            logger.warning("Embedding failed for chunk from %s: %s", chunk["source"], vector)
             continue
 
         points.append(
@@ -289,6 +295,7 @@ async def scrape_and_ingest(
         await qdrant.upsert(
             collection_name=settings.qdrant_collection,
             points=points,
+            wait=True,
         )
         logger.info(
             "Ingested %d chunks into Qdrant for run_id=%s from %s",
@@ -303,5 +310,14 @@ async def scrape_and_ingest(
             "model": "httpx+bs4",
             "chunks": len(points),
         })
+
+    if metrics:
+        latency_ms = (time.time() - start_time) * 1000
+        metrics.record_custom_trace(
+            agent_name="Scraper",
+            model="httpx + Gemini Embed",
+            latency_ms=latency_ms,
+            details=f"{len(points)} chunks"
+        )
 
     return len(points)

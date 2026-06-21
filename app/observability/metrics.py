@@ -93,6 +93,25 @@ class MetricsCollector:
             }
             self._agent_trace.append(trace_entry)
 
+    def record_custom_trace(
+        self,
+        agent_name: str,
+        model: str,
+        latency_ms: float,
+        details: str = "",
+    ) -> None:
+        self._latency_accumulator.append(latency_ms)
+        self._agent_trace.append({
+            "agent": agent_name,
+            "model": model,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "latency_ms": round(latency_ms, 1),
+            "prompt_version": details,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
     def record_output(
         self,
         email_subject: str,

@@ -10,3 +10,5 @@ dist/
 build/
 .DS_Store
 *.log
+AI_CONCEPTS_CHEATSHEET.md
+PROJECT_DEEP_DIVE.md

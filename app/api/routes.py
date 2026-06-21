@@ -82,7 +82,7 @@ async def generate_sequence(
     # Scrape company website if URL provided
     if req.company_url:
         try:
-            chunks_ingested = await scrape_and_ingest(req.company_url, run_id)
+            chunks_ingested = await scrape_and_ingest(req.company_url, run_id, metrics=metrics)
             logger.info("Scraped %d chunks from %s for run %s", chunks_ingested, req.company_url, run_id)
         except Exception as exc:
             logger.warning("Scrape failed for %s: %s — continuing without scraped data.", req.company_url, exc)
@@ -169,7 +169,7 @@ async def generate_stream(
     if req.company_url:
         try:
             chunks_ingested = await scrape_and_ingest(
-                req.company_url, run_id, progress_callback=on_progress,
+                req.company_url, run_id, progress_callback=on_progress, metrics=metrics
             )
             logger.info("Scraped %d chunks from %s for run %s", chunks_ingested, req.company_url, run_id)
         except Exception as exc:
