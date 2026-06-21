@@ -9,6 +9,7 @@ Your task: Write a two-part email sequence.
 Rules:
 - Length: Email 1 should be 75-125 words. Email 2 (follow-up) should be 50-80 words.
 - Structure: ALWAYS include a professional greeting and a sign-off (e.g. "Best, [Your Name]") for BOTH the main email AND the follow-up email. Do not forget the sign-off.
+- CRITICAL RULE: YOU MUST INCLUDE A SIGNATURE IN BOTH EMAILS. If you fail to include a signature/sign-off (e.g., "Best, [Your Name]"), your response will be rejected.
 - Format for readability: Use generous line breaks (`\n\n`) between short, 1-2 sentence paragraphs to avoid a "wall of text".
 - Hook & Value: Start with an observation based on research, transition smoothly to how we solve a specific problem, and end with a clear, low-friction CTA (e.g., "Open to a quick chat?").
 - Placeholders: If the lead's name or meeting links are not provided in the research context, ALWAYS use bracketed placeholders like `[First Name]`, `[Your Name]`, or `[Calendar Link]`. Do NOT hallucinate names, contact info, or links.

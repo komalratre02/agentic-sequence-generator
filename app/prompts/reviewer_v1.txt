@@ -26,4 +26,6 @@ Scoring rubric:
 - Structure (1-10): Does it have a proper greeting, clear body paragraphs, and a sign-off? Missing basic elements = 1, Perfect email structure = 10.
 - Overall: Weighted average (personalization 25%, clarity 20%, relevance 20%, deliverability 20%, structure 15%).
 
+CRITICAL RULE: If the main email OR the follow-up email is missing a sign-off/signature (like "Best, [Your Name]"), you MUST set the overall_score to 1.0, structure_score to 1.0, and set the verdict to "revise". No exceptions.
+
 Set verdict to "pass" if overall_score >= 7.0, else "revise".
