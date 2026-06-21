@@ -280,11 +280,15 @@
       <div class="stat-value">{{ "%.0f"|format(log.workflow_duration_ms or 0) }}<span style="font-size:0.65rem;color:var(--text-muted);margin-left:2px;">ms</span></div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">RAG Chunks</div>
+      <div class="stat-label">RAG Retrieval</div>
       <div class="stat-value">{{ log.rag_chunks_retrieved or 0 }}</div>
-      {% if not log.rag_chunks_retrieved %}
-      <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px; line-height:1.2;">No URL provided or site blocked bot</div>
-      {% endif %}
+      <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px; line-height:1.2;">
+        {% if log.rag_chunks_retrieved %}
+        Top-K highly relevant chunks injected into prompt
+        {% else %}
+        No URL provided or site blocked bot
+        {% endif %}
+      </div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Est. Cost</div>

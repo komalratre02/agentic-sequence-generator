@@ -317,7 +317,7 @@ async def scrape_and_ingest(
             agent_name="Scraper",
             model="httpx + Gemini Embed",
             latency_ms=latency_ms,
-            details=f"{len(points)} chunks"
+            details=f"{len(points)} chunks ingested"
         )
 
     return len(points)
