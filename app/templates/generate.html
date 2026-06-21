@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}Generate Sequence — AI Sequence Generator{% endblock %}
+
+{% block head %}
+<style>
+  .pipeline-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    opacity: 0.3; transition: all 0.35s var(--ease);
+  }
+  .pipeline-step.active { opacity: 1; }
+  .pipeline-step.running { opacity: 1; background: rgba(99,102,241,0.04); }
+  .pipeline-step.done    { opacity: 1; }
+  .pipeline-step.error   { opacity: 1; background: rgba(239,68,68,0.04); }
+
+  .pipeline-step .step-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; flex-shrink: 0;
+    transition: all 0.3s var(--ease);
+  }
+  .pipeline-step.done .step-icon {
+    background: var(--success-glow); border-color: rgba(34,197,94,0.25);
+  }
+  .pipeline-step.running .step-icon {
+    background: var(--primary-glow); border-color: rgba(99,102,241,0.3);
+    animation: glow-pulse 2s ease infinite;
+  }
+  .pipeline-step.error .step-icon {
+    background: var(--danger-glow); border-color: rgba(239,68,68,0.25);
+  }
+  .pipeline-step.skipped { opacity: 0.15; }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); }
+    50%      { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
+  }
+
+  .step-name { font-size: 0.84rem; font-weight: 600; transition: color 0.2s var(--ease); }
+  .step-status { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+  .pipeline-step.error .step-name { color: var(--danger); }
+  .pipeline-step.done .step-name { color: var(--success); }
+  .step-meta { font-size: 0.68rem; color: var(--text-muted); font-family: var(--mono); margin-top: 2px; }
+
+  .pipeline-step + .pipeline-step { border-top: 1px solid var(--border); }
+
+  .page-title {
+    font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Streaming indicator */
+  .stream-indicator {
+    display: none; align-items: center; gap: 6px;
+    font-size: 0.72rem; color: var(--primary-h);
+    padding: 6px 12px; border-radius: 8px;
+    background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.12);
+    margin-bottom: 0.75rem;
+  }
+  .stream-indicator.active { display: inline-flex; }
+  .stream-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary); animation: pulse 1.5s ease infinite;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gradient-line mb-2"></div>
+
+<div style="max-width:680px; margin:0 auto;">
+  <h1 class="page-title" style="margin-top:0.5rem;">Generate Email Sequence</h1>
+  <p class="text-muted" style="margin-top:6px; margin-bottom:2rem; font-size:0.88rem;">
+    Define your campaign target and let the agentic workflow craft a personalised outreach sequence.
+  </p>
+
+  <div class="grid-2" style="gap:1.5rem; align-items:start;">
+
+    <!-- Form -->
+    <div class="card card-glow">
+      <form id="generateForm">
+        <div style="display:flex;flex-direction:column;gap:1.15rem;">
+          <div class="form-group">
+            <label class="form-label" for="goal">Campaign Goal</label>
+            <input class="form-control" id="goal" name="goal" type="text" placeholder="e.g. Book meetings with CTOs"
+              required value="Book meetings with CTOs" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="persona">Target Persona</label>
+            <input class="form-control" id="persona" name="persona" type="text" placeholder="e.g. CTO" required
+              value="CTO" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="company">Target Company</label>
+            <input class="form-control" id="company" name="company" type="text" placeholder="e.g. Acme Inc" required
+              value="Acme Inc" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="width:100%; justify-content:center;">
+            <span id="btnText">Run Workflow</span>
+            <div class="spinner" id="btnSpinner"></div>
+          </button>
+        </div>
+      </form>
+
+      <div id="errorBox" class="card" style="display:none; margin-top:16px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.03); padding: 1.15rem;">
+        <div style="display:flex; align-items:flex-start; gap:12px;">
+          <div style="font-size:1.2rem; background:var(--danger-glow); border-radius:8px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(239,68,68,0.15);">❌</div>
+          <div style="flex-grow:1;">
+            <h3 style="font-size:0.9rem; font-weight:700; color:var(--danger); margin-bottom:4px;">Workflow Failed</h3>
+            <p id="errorMessage" style="font-size:0.84rem; color:var(--text); margin-bottom:12px; line-height: 1.5;"></p>
+            <div id="errorSuggestion" style="display:none; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-top:8px;">
+              <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:8px;">Suggestions to fix:</span>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Book meetings with CTOs for our developer platform', 'CTO', 'Acme Developer Corp')">
+                  💡 <strong>Sales:</strong> "Book meetings with CTOs for our developer platform"
+                </button>
+                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Drive webinar registrations for our marketing SaaS launch', 'Marketing Director', 'SaaS Growth Inc')">
+                  💡 <strong>Marketing:</strong> "Drive webinar registrations for our marketing SaaS launch"
+                </button>
+                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Reach out to senior backend developers in London', 'Senior Software Engineer', 'Acme Engineering')">
+                  💡 <strong>Recruitment:</strong> "Reach out to senior backend developers in London"
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Pipeline Tracker -->
+    <div class="card" id="pipelineCard">
+      <div class="section-title" style="font-size:0.85rem; margin-bottom:0.25rem;">Workflow Pipeline</div>
+      <div id="streamIndicator" class="stream-indicator">
+        <span class="stream-dot"></span>
+        Streaming from server…
+      </div>
+      <div id="pipeline">
+        <div class="pipeline-step" id="step-planner">
+          <div class="step-icon">🧠</div>
+          <div style="flex-grow:1;">
+            <div class="step-name">Planner Agent</div>
+            <div class="step-status">Waiting…</div>
+            <div class="step-meta" id="meta-planner"></div>
+          </div>
+        </div>
+        <div class="pipeline-step" id="step-research">
+          <div class="step-icon">🔍</div>
+          <div style="flex-grow:1;">
+            <div class="step-name">Research Agent (RAG)</div>
+            <div class="step-status">Waiting…</div>
+            <div class="step-meta" id="meta-research"></div>
+          </div>
+        </div>
+        <div class="pipeline-step" id="step-writer">
+          <div class="step-icon">✍️</div>
+          <div style="flex-grow:1;">
+            <div class="step-name">Writer Agent</div>
+            <div class="step-status">Waiting…</div>
+            <div class="step-meta" id="meta-writer"></div>
+          </div>
+        </div>
+        <div class="pipeline-step" id="step-reviewer">
+          <div class="step-icon">⚖️</div>
+          <div style="flex-grow:1;">
+            <div class="step-name">Reviewer Agent</div>
+            <div class="step-status">Waiting…</div>
+            <div class="step-meta" id="meta-reviewer"></div>
+          </div>
+        </div>
+        <div class="pipeline-step" id="step-approval">
+          <div class="step-icon">👤</div>
+          <div style="flex-grow:1;">
+            <div class="step-name">Human Approval</div>
+            <div class="step-status">Waiting…</div>
+          </div>
+        </div>
+      </div>
+      <div id="pipelineResult" style="display:none; margin-top:1.25rem;">
+        <div class="gradient-line mb-2"></div>
+        <div class="stat-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="stat-card">
+            <div class="stat-label">Score</div>
+            <div class="stat-value" id="resultScore">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Tokens</div>
+            <div class="stat-value" id="resultTokens">—</div>
+          </div>
+        </div>
+        <a href="#" id="reviewLink" class="btn btn-primary mt-3" style="width:100%; justify-content:center;">
+          Open Review Page →
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById('generateForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const btnSpinner = document.getElementById('btnSpinner');
+  const errorBox = document.getElementById('errorBox');
+  const streamIndicator = document.getElementById('streamIndicator');
+
+  const steps = ['planner', 'research', 'writer', 'reviewer', 'approval'];
+
+  function setStep(id, state, statusText) {
+    const el = document.getElementById(`step-${id}`);
+    if (!el) return;
+    el.className = `pipeline-step ${state}`;
+    el.querySelector('.step-status').textContent = statusText;
+  }
+
+  function setMeta(id, text) {
+    const el = document.getElementById(`meta-${id}`);
+    if (el) el.textContent = text;
+  }
+
+  function fillExample(goal, persona, company) {
+    document.getElementById('goal').value = goal;
+    document.getElementById('persona').value = persona;
+    document.getElementById('company').value = company;
+    errorBox.style.display = 'none';
+    steps.forEach(s => { setStep(s, '', 'Waiting…'); setMeta(s, ''); });
+  }
+
+  function resetPipeline() {
+    steps.forEach(s => { setStep(s, '', 'Waiting…'); setMeta(s, ''); });
+    errorBox.style.display = 'none';
+    document.getElementById('pipelineResult').style.display = 'none';
+  }
+
+  // ─── SSE-based pipeline streaming ───
+  function handleSSEEvent(event) {
+    switch (event.type) {
+      case 'agent_start':
+        setStep(event.agent, 'running active', 'Running…');
+        break;
+
+      case 'agent_complete':
+        setStep(event.agent, 'done active', '✓ Complete');
+        if (event.model) {
+          setMeta(event.agent, event.model);
+        }
+        if (event.score !== undefined) {
+          setMeta(event.agent, `${event.model} · score: ${event.score.toFixed(1)}`);
+        }
+        break;
+
+      case 'revision_loop':
+        setStep('writer', 'running active', `Revising (${event.revision}/${event.max_revisions})…`);
+        setStep('reviewer', '', 'Waiting for revised draft…');
+        setMeta('reviewer', '');
+        break;
+
+      case 'complete':
+        setStep('approval', 'running active', 'Awaiting your decision…');
+        document.getElementById('resultScore').textContent = event.score ? event.score.toFixed(1) : '—';
+        document.getElementById('resultTokens').textContent = event.total_tokens || '—';
+        document.getElementById('reviewLink').href = `/review/${event.run_id}`;
+        document.getElementById('pipelineResult').style.display = 'block';
+        streamIndicator.classList.remove('active');
+        break;
+
+      case 'error':
+        const isValidation = event.error_type === 'validation' ||
+          (event.message && (event.message.includes('Invalid business objective') || event.message.includes('too short')));
+
+        document.getElementById('errorMessage').textContent = event.message;
+        const errorSuggestion = document.getElementById('errorSuggestion');
+
+        if (isValidation) {
+          errorSuggestion.style.display = 'block';
+          setStep('planner', 'error active', '✗ Invalid Goal');
+          steps.slice(1).forEach(s => setStep(s, 'skipped', 'Skipped'));
+        } else {
+          errorSuggestion.style.display = 'none';
+          steps.forEach(s => {
+            const el = document.getElementById(`step-${s}`);
+            if (el && el.classList.contains('running')) {
+              setStep(s, 'error active', '✗ Failed');
+            }
+          });
+        }
+        errorBox.style.display = 'block';
+        streamIndicator.classList.remove('active');
+        break;
+
+      case 'heartbeat':
+        // Keep-alive, no action needed
+        break;
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    resetPipeline();
+    btnText.textContent = 'Running workflow…';
+    btnSpinner.style.display = 'block';
+    submitBtn.disabled = true;
+    streamIndicator.classList.add('active');
+
+    const payload = {
+      goal: document.getElementById('goal').value,
+      persona: document.getElementById('persona').value,
+      company: document.getElementById('company').value,
+    };
+
+    try {
+      const response = await fetch('/api/generate/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error: ${response.status}`);
+      }
+
+      // Read SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.slice(6));
+              handleSSEEvent(event);
+            } catch (parseErr) {
+              console.warn('SSE parse error:', parseErr);
+            }
+          }
+        }
+      }
+
+    } catch (err) {
+      handleSSEEvent({
+        type: 'error',
+        error_type: 'network',
+        message: err.message || 'Network error — could not reach the server.',
+      });
+    } finally {
+      btnText.textContent = 'Run Workflow';
+      btnSpinner.style.display = 'none';
+      submitBtn.disabled = false;
+      streamIndicator.classList.remove('active');
+    }
+  });
+</script>
+{% endblock %}

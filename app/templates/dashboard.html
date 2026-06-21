@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AI Sequence Generator{% endblock %}
+
+{% block head %}
+<style>
+  .hero-section {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 1.5rem; flex-wrap: wrap;
+  }
+  .hero-title {
+    font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Premium Tooltip */
+  .tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+  .tooltip-wrapper::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: rgba(15, 23, 42, 0.95);
+    color: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: normal;
+    width: max-content;
+    max-width: 280px;
+    text-align: center;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
+    pointer-events: none;
+  }
+  /* Little arrow pointer */
+  .tooltip-wrapper::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border: 6px solid transparent;
+    border-top-color: rgba(15, 23, 42, 0.95);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 101;
+    pointer-events: none;
+  }
+  .tooltip-wrapper:hover::after,
+  .tooltip-wrapper:hover::before {
+    opacity: 1;
+    visibility: visible;
+  }
+  .tooltip-wrapper:hover::after {
+    transform: translateX(-50%) translateY(-6px);
+  }
+  .tooltip-wrapper:hover::before {
+    transform: translateX(-50%) translateY(6px);
+  }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+  @media (max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card-v2 {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.15rem;
+    transition: all 0.25s var(--ease);
+    position: relative; overflow: hidden;
+  }
+  .stat-card-v2::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; opacity: 0;
+    transition: opacity 0.25s var(--ease);
+  }
+  .stat-card-v2:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  .stat-card-v2:hover::before { opacity: 1; }
+  .stat-card-v2.stat-total::before    { background: var(--primary); }
+  .stat-card-v2.stat-approved::before { background: var(--success); }
+  .stat-card-v2.stat-pending::before  { background: var(--warning); }
+  .stat-card-v2.stat-rejected::before { background: var(--danger); }
+  .stat-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; margin-bottom: 0.6rem;
+  }
+  .stat-total    .stat-icon { background: var(--primary-glow); }
+  .stat-approved .stat-icon { background: var(--success-glow); }
+  .stat-pending  .stat-icon { background: var(--warning-glow); }
+  .stat-rejected .stat-icon { background: var(--danger-glow); }
+
+  /* Table */
+  .runs-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s var(--ease);
+  }
+  .runs-table tbody tr:hover { background: rgba(99,102,241,0.04); }
+  .run-company { font-weight: 600; font-size: 0.88rem; }
+  .run-goal {
+    font-size: 0.78rem; color: var(--text-muted);
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .review-btn {
+    padding: 5px 12px; font-size: 0.78rem;
+    opacity: 0.6; transition: opacity 0.2s var(--ease);
+  }
+  .runs-table tbody tr:hover .review-btn { opacity: 1; }
+
+  /* Provider Health */
+  .provider-card {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    transition: all 0.2s var(--ease);
+  }
+  .provider-card:hover { border-color: var(--border-hover); }
+  .provider-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .provider-dot.healthy { background: var(--success); box-shadow: 0 0 6px rgba(34,197,94,0.4); }
+  .provider-dot.degraded { background: var(--warning); box-shadow: 0 0 6px rgba(245,158,11,0.4); }
+  .provider-dot.down { background: var(--danger); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+
+  /* Architecture */
+  .arch-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .arch-node {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 14px;
+    font-size: 0.78rem; font-weight: 600;
+    transition: all 0.2s var(--ease); cursor: default;
+  }
+  .arch-node:hover { border-color: var(--primary); background: rgba(99,102,241,0.05); transform: translateY(-1px); }
+  .arch-arrow { color: var(--text-muted); font-size: 0.75rem; opacity: 0.4; }
+
+  .empty-state { text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted); }
+  .empty-icon {
+    width: 56px; height: 56px; margin: 0 auto 1rem;
+    background: var(--surface-2); border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="gradient-line mb-2"></div>
+
+<!-- Hero -->
+<div class="hero-section mt-2 mb-4">
+  <div>
+    <h1 class="hero-title">Campaign Dashboard</h1>
+    <p class="text-muted" style="margin-top:6px; font-size:0.88rem;">
+      Monitor active workflow runs, provider health, and human approval queue.
+    </p>
+  </div>
+  <a href="/generate" class="btn btn-primary btn-lg">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M12 5v14"></path>
+      <path d="M5 12h14"></path>
+    </svg>
+    New Sequence
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="stats-row mb-4">
+  <div class="stat-card-v2 stat-total">
+    <div class="stat-icon">📊</div>
+    <div class="stat-label">Total Runs</div>
+    <div class="stat-value">{{ total_runs | default(0) }}</div>
+  </div>
+  <div class="stat-card-v2 stat-approved">
+    <div class="stat-icon">✓</div>
+    <div class="stat-label">Approved</div>
+    <div class="stat-value text-success">{{ approved_count | default(0) }}</div>
+  </div>
+  <div class="stat-card-v2 stat-pending">
+    <div class="stat-icon">⏳</div>
+    <div class="stat-label">Pending Review</div>
+    <div class="stat-value text-warning">{{ pending_count | default(0) }}</div>
+  </div>
+  <div class="stat-card-v2 stat-rejected">
+    <div class="stat-icon">✗</div>
+    <div class="stat-label">Rejected</div>
+    <div class="stat-value text-danger">{{ rejected_count | default(0) }}</div>
+  </div>
+</div>
+
+<!-- Provider Health -->
+{% if provider_health %}
+<div class="card mb-4" style="padding:1.25rem;">
+  <div class="section-title" style="font-size:0.9rem; margin-bottom:0.75rem;">
+    🔌 LLM Provider Health
+    <span class="text-muted" style="font-weight:400; font-size:0.75rem; margin-left:8px;">Multi-provider routing with circuit breaker</span>
+  </div>
+  <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+    {% for p in provider_health %}
+    <div class="provider-card" style="flex:1; min-width:200px;">
+      <div class="provider-dot {% if p.is_available and p.success_rate >= 0.9 %}healthy{% elif p.is_available %}degraded{% else %}down{% endif %}"></div>
+      <div style="flex-grow:1;">
+        <div style="font-weight:700; font-size:0.88rem; text-transform:capitalize;">{{ p.name }}</div>
+        <div style="font-size:0.72rem; color:var(--text-muted); font-family:var(--mono); margin-top:2px;">
+          {{ p.total_requests }} req · {{ "%.0f"|format(p.success_rate * 100) }}% success
+          {% if p.avg_latency_ms > 0 %} · {{ "%.0f"|format(p.avg_latency_ms) }}ms avg{% endif %}
+        </div>
+      </div>
+      <div>
+        {% if p.is_available and p.success_rate >= 0.9 %}
+        <span class="badge badge-approved" style="font-size:0.65rem;">HEALTHY</span>
+        {% elif p.is_available %}
+        <span class="badge badge-pending" style="font-size:0.65rem;">DEGRADED</span>
+        {% else %}
+        <span class="badge badge-failed" style="font-size:0.65rem;">CIRCUIT OPEN</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Runs Table -->
+<div class="card" style="padding:0; overflow:hidden;">
+
+  <div style="padding:1.25rem 1.5rem 0;">
+    <div class="section-title" style="margin-bottom:0.75rem;">Recent Workflow Runs</div>
+  </div>
+
+  {% if runs %}
+  <div class="table-wrap" style="border:none; border-radius:0;">
+    <table class="runs-table">
+      <thead>
+        <tr>
+          <th>Run ID</th>
+          <th>Company</th>
+          <th>Goal</th>
+          <th>Score</th>
+          <th>Tokens</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr onclick="window.location='/review/{{ run.run_id }}'">
+          <td>
+            <span class="mono text-muted" style="font-size:0.76rem;">
+              {{ run.run_id[:8] if run.run_id else "—" }}…
+            </span>
+          </td>
+          <td>
+            <span class="run-company">{{ run.company or "—" }}</span>
+          </td>
+          <td>
+            <div class="tooltip-wrapper" data-tooltip="{{ run.goal or '' }}">
+              <div class="run-goal">{{ run.goal or "—" }}</div>
+            </div>
+            {% if run.status in ["failed", "error"] and run.error_message %}
+              <div class="tooltip-wrapper" data-tooltip="{{ run.error_message }}" style="display: block; margin-top: 2px;">
+                <div style="font-size:0.72rem; color:var(--danger); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:default;">
+                  ⚠ {{ run.error_message }}
+                </div>
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            {% if run.evaluation_score is not none %}
+            {% set score = run.evaluation_score %}
+            <span class="{% if score >= 7 %}text-success{% elif score >= 5 %}text-warning{% else %}text-danger{% endif %}" style="font-weight:700; font-size:0.88rem;">
+              {{ "%.1f"|format(score) }}
+            </span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-muted" style="font-size:0.82rem;">{{ run.total_token_count or "—" }}</td>
+          <td>
+            {% set status = run.status or "pending" %}
+            <span class="badge badge-{{ status }}">{{ status|upper }}</span>
+          </td>
+          <td>
+            <a href="/review/{{ run.run_id }}" class="btn btn-outline review-btn" onclick="event.stopPropagation()">
+              Review →
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+
+  <div class="empty-state">
+    <div class="empty-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.5">
+        <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+        <path d="M3 9h18"></path>
+        <path d="M9 21V9"></path>
+      </svg>
+    </div>
+    <p style="font-size:0.9rem; margin-bottom:0.75rem;">No workflow runs yet.</p>
+    <a href="/generate" class="btn btn-primary">Generate your first sequence</a>
+  </div>
+
+  {% endif %}
+
+</div>
+
+<!-- Architecture -->
+<div class="card mt-4" style="background:linear-gradient(135deg,var(--surface) 0%,rgba(99,102,241,.03) 100%);">
+  <div class="section-title">Workflow Architecture</div>
+  <div class="arch-flow">
+    <div class="arch-node">🧠 Planner Agent</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-node">🔍 Research Agent (RAG)</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-node">✍️ Writer Agent</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-node">⚖️ Reviewer Agent</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-node">👤 Human Approval</div>
+  </div>
+  <p class="text-muted mt-2" style="font-size:.78rem;">
+    Multi-provider routing (Groq + Gemini) with circuit breaker · If score &lt; 7.0 → Reviewer routes back to Writer (max 3 cycles)
+  </p>
+</div>
+
+{% endblock %}

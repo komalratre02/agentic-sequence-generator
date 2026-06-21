@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Audit Logs — AI Sequence Generator{% endblock %}
+
+{% block head %}
+<style>
+  .logs-title {
+    font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .logs-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s var(--ease);
+  }
+  .logs-table tbody tr:hover {
+    background: rgba(99,102,241,0.04);
+  }
+  .model-tag {
+    font-family: var(--mono); font-size: 0.72rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 6px;
+    display: inline-block;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gradient-line mb-2"></div>
+
+<div class="flex items-center justify-between mt-2 mb-4">
+  <div>
+    <h1 class="logs-title">Audit Logs</h1>
+    <p class="text-muted" style="margin-top:6px; font-size:0.88rem;">Full execution history with token counts, latency, and model metadata.</p>
+  </div>
+  <a href="/generate" class="btn btn-primary">+ New Run</a>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if runs %}
+  <div class="table-wrap" style="border:none; border-radius:0;">
+    <table class="logs-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Run ID</th>
+          <th>Company / Goal</th>
+          <th>Model</th>
+          <th>Prompt Ver.</th>
+          <th>Score</th>
+          <th>Tokens</th>
+          <th>Latency</th>
+          <th>RAG</th>
+          <th>Rev.</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr onclick="window.location='/review/{{ run.run_id }}'">
+          <td class="mono text-muted" style="font-size:0.74rem; white-space:nowrap;">
+            {{ run.created_at.strftime('%b %d %H:%M') if run.created_at else '—' }}
+          </td>
+          <td><span class="mono text-muted" style="font-size:0.74rem;">{{ run.run_id[:8] }}…</span></td>
+          <td>
+            <div style="font-weight:600; font-size:0.84rem;">{{ run.company or '—' }}</div>
+            <div style="font-size:0.74rem; color:var(--text-muted); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              {{ run.goal or '' }}</div>
+          </td>
+          <td><span class="model-tag">{{ run.model_name or '—' }}</span></td>
+          <td class="mono text-muted" style="font-size:0.74rem;">{{ run.prompt_version or '—' }}</td>
+          <td>
+            {% if run.evaluation_score is not none %}
+            {% set score = run.evaluation_score %}
+            <span class="{% if score >= 7 %}text-success{% elif score >= 5 %}text-warning{% else %}text-danger{% endif %}" style="font-weight: 700; font-size:0.88rem;">
+              {{ "%.1f"|format(score) }}
+            </span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-muted" style="font-size:0.82rem;">{{ run.total_token_count or '—' }}</td>
+          <td class="text-muted" style="font-size:0.82rem;">{{ "%.0f"|format(run.workflow_duration_ms or 0) }}ms</td>
+          <td>
+            {% if run.rag_context_used %}
+            <span style="color:var(--primary-h); font-size:0.78rem;">✓ {{ run.rag_chunks_retrieved }}c</span>
+            {% else %}
+            <span class="text-muted" style="font-size:0.78rem;">—</span>
+            {% endif %}
+          </td>
+          <td class="text-muted" style="text-align:center; font-size:0.82rem;">{{ run.revision_cycles or 0 }}</td>
+          <td><span class="badge badge-{{ run.status or 'pending' }}">{{ (run.status or 'pending') | upper }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center; padding:3.5rem 1.5rem; color:var(--text-muted);">
+    <p style="font-size:0.88rem; margin-bottom:0.5rem;">No audit logs yet.</p>
+    <a href="/generate" style="color:var(--primary); text-decoration:none; font-weight:600; font-size:0.84rem;">Generate a sequence →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
