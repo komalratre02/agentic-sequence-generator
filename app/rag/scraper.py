@@ -195,6 +195,8 @@ async def scrape_and_ingest(
                 "chunks": 0,
                 "warning": result,
             })
+        if metrics:
+            metrics.record_custom_trace("Scraper", "httpx", (time.time()-start_time)*1000, f"0 chunks (invalid: {company_url})")
         return 0
     company_url = result
 
@@ -252,6 +254,8 @@ async def scrape_and_ingest(
                 "model": "httpx+bs4",
                 "chunks": 0,
             })
+        if metrics:
+            metrics.record_custom_trace("Scraper", "httpx+bs4", (time.time()-start_time)*1000, f"0 chunks (no content: {company_url})")
         return 0
 
     # ── Chunk all text ───────────────────────────────────────────────────
@@ -317,7 +321,7 @@ async def scrape_and_ingest(
             agent_name="Scraper",
             model="httpx + Gemini Embed",
             latency_ms=latency_ms,
-            details=f"{len(points)} chunks ingested"
+            details=f"{len(points)} chunks ingested from {company_url}"
         )
 
     return len(points)

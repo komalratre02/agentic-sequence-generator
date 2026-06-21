@@ -66,6 +66,16 @@
             <div style="font-weight:600; font-size:0.84rem;">{{ run.company or '—' }}</div>
             <div style="font-size:0.74rem; color:var(--text-muted); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
               {{ run.goal or '' }}</div>
+            
+            {% if run.agent_trace %}
+              {% for trace in run.agent_trace %}
+                {% if trace.agent == 'Scraper' %}
+                  <div style="font-size:0.65rem; margin-top:2px; {% if '0 chunks' in trace.prompt_version %}color:var(--danger);{% else %}color:var(--success);{% endif %}">
+                    {{ trace.prompt_version }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
           </td>
           <td><span class="model-tag">{{ run.model_name or '—' }}</span></td>
           <td class="mono text-muted" style="font-size:0.74rem;">{{ run.prompt_version or '—' }}</td>
