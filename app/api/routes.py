@@ -23,6 +23,7 @@ from app.db.models import get_session, ExecutionLog, ApprovalRecord
 from app.observability.metrics import MetricsCollector, save_approval
 from app.providers.provider_router import SmartRouter
 from app.graph.workflow import run_workflow
+from app.rag.scraper import scrape_and_ingest
 
 logger    = logging.getLogger(__name__)
 router    = APIRouter()
@@ -43,9 +44,10 @@ def get_router() -> SmartRouter:
 # ---------------------------------------------------------------------------
 
 class GenerateRequest(BaseModel):
-    goal:    str
-    persona: str
-    company: str
+    goal:        str
+    persona:     str
+    company:     str
+    company_url: str = ""
 
 
 class GenerateResponse(BaseModel):
@@ -76,6 +78,14 @@ async def generate_sequence(
     llm     = get_router()
 
     metrics.record_input(req.goal, req.persona, req.company)
+
+    # Scrape company website if URL provided
+    if req.company_url:
+        try:
+            chunks_ingested = await scrape_and_ingest(req.company_url, run_id)
+            logger.info("Scraped %d chunks from %s for run %s", chunks_ingested, req.company_url, run_id)
+        except Exception as exc:
+            logger.warning("Scrape failed for %s: %s — continuing without scraped data.", req.company_url, exc)
 
     try:
         final_state = await run_workflow(
@@ -154,6 +164,24 @@ async def generate_stream(
     metrics = MetricsCollector(run_id, progress_callback=on_progress)
     llm = get_router()
     metrics.record_input(req.goal, req.persona, req.company)
+
+    # Scrape company website if URL provided
+    if req.company_url:
+        try:
+            chunks_ingested = await scrape_and_ingest(
+                req.company_url, run_id, progress_callback=on_progress,
+            )
+            logger.info("Scraped %d chunks from %s for run %s", chunks_ingested, req.company_url, run_id)
+        except Exception as exc:
+            logger.warning("Scrape failed for %s: %s — continuing without scraped data.", req.company_url, exc)
+            on_progress({
+                "type": "agent_complete",
+                "agent": "scraper",
+                "label": "Website Scraper",
+                "model": "httpx+bs4",
+                "chunks": 0,
+                "warning": f"Scrape error: {exc}",
+            })
 
     async def run_and_save():
         """Execute workflow and persist results."""

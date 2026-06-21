@@ -98,6 +98,14 @@
             <input class="form-control" id="company" name="company" type="text" placeholder="e.g. Acme Inc" required
               value="Acme Inc" />
           </div>
+          <div class="form-group">
+            <label class="form-label" for="company_url">Company Website URL <span style="font-weight:400; color:var(--text-muted); font-size:0.76rem;">(optional — enables live RAG)</span></label>
+            <input class="form-control" id="company_url" name="company_url" type="url" placeholder="e.g. https://stripe.com"
+              style="font-family: var(--mono); font-size: 0.82rem;" />
+            <div style="margin-top:4px; font-size:0.7rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">
+              🌐 We'll scrape the site, chunk it, and feed it into RAG for hyper-personalised emails
+            </div>
+          </div>
           <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="width:100%; justify-content:center;">
             <span id="btnText">Run Workflow</span>
             <div class="spinner" id="btnSpinner"></div>
@@ -138,6 +146,14 @@
         Streaming from server…
       </div>
       <div id="pipeline">
+        <div class="pipeline-step" id="step-scraper">
+          <div class="step-icon">🌐</div>
+          <div style="flex-grow:1;">
+            <div class="step-name">Website Scraper</div>
+            <div class="step-status">Waiting…</div>
+            <div class="step-meta" id="meta-scraper"></div>
+          </div>
+        </div>
         <div class="pipeline-step" id="step-planner">
           <div class="step-icon">🧠</div>
           <div style="flex-grow:1;">
@@ -207,7 +223,7 @@
   const errorBox = document.getElementById('errorBox');
   const streamIndicator = document.getElementById('streamIndicator');
 
-  const steps = ['planner', 'research', 'writer', 'reviewer', 'approval'];
+  const steps = ['scraper', 'planner', 'research', 'writer', 'reviewer', 'approval'];
 
   function setStep(id, state, statusText) {
     const el = document.getElementById(`step-${id}`);
@@ -243,12 +259,25 @@
         break;
 
       case 'agent_complete':
-        setStep(event.agent, 'done active', '✓ Complete');
-        if (event.model) {
-          setMeta(event.agent, event.model);
-        }
-        if (event.score !== undefined) {
-          setMeta(event.agent, `${event.model} · score: ${event.score.toFixed(1)}`);
+        if (event.agent === 'scraper') {
+          if (event.warning) {
+            setStep('scraper', 'error active', '⚠ ' + event.warning);
+            setMeta('scraper', 'Continuing without scraped data');
+          } else if (event.chunks === 0) {
+            setStep('scraper', 'done active', '⚠ No content found');
+            setMeta('scraper', 'Site may block bots — continuing with LLM knowledge');
+          } else {
+            setStep('scraper', 'done active', '✓ Complete');
+            setMeta('scraper', `${event.chunks} chunks ingested`);
+          }
+        } else {
+          setStep(event.agent, 'done active', '✓ Complete');
+          if (event.model) {
+            setMeta(event.agent, event.model);
+          }
+          if (event.score !== undefined) {
+            setMeta(event.agent, `${event.model} · score: ${event.score.toFixed(1)}`);
+          }
         }
         break;
 
@@ -305,11 +334,19 @@
     submitBtn.disabled = true;
     streamIndicator.classList.add('active');
 
+    const companyUrl = document.getElementById('company_url').value.trim();
+
     const payload = {
       goal: document.getElementById('goal').value,
       persona: document.getElementById('persona').value,
       company: document.getElementById('company').value,
+      company_url: companyUrl,
     };
+
+    // If no URL provided, skip the scraper step visually
+    if (!companyUrl) {
+      setStep('scraper', 'done active', '⏭ Skipped (no URL)');
+    }
 
     try {
       const response = await fetch('/api/generate/stream', {

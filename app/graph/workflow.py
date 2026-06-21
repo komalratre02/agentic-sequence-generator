@@ -91,6 +91,7 @@ async def research_node(state: WorkflowState) -> dict[str, Any]:
         persona=state["persona"],
         llm=state["llm"],
         metrics=state["metrics"],
+        run_id=state.get("run_id", ""),
     )
     state["metrics"].emit_progress({
         "type": "agent_complete", "agent": "research", "label": "Research Agent (RAG)",

@@ -21,20 +21,21 @@ async def run_research(
     persona: str,
     llm: LLMProvider,
     metrics: MetricsCollector,
+    run_id: str = "",
 ) -> dict[str, Any]:
     """
     Run the Research Agent.
 
     1. Build a search query
-    2. Retrieve context from Qdrant
+    2. Retrieve context from Qdrant (filtered by run_id if scraped data exists)
     3. Synthesise into a research brief via LLM
     """
     system_prompt = load_prompt(PROMPT_NAME, PROMPT_VERSION)
     version_tag   = prompt_version_tag(PROMPT_NAME, PROMPT_VERSION)
 
-    # Step 1: Retrieve RAG context
+    # Step 1: Retrieve RAG context (scoped to this run's scraped data)
     query = f"{company} {persona} pain points challenges industry"
-    chunks = await retrieve_context(query, top_k=4)
+    chunks = await retrieve_context(query, top_k=6, run_id=run_id or None)
     context_text = format_context(chunks)
 
     metrics.record_rag(used=bool(chunks), chunks=len(chunks))
