@@ -55,13 +55,18 @@ async def ensure_collection() -> bool:
             )
             logger.info("Created Qdrant collection '%s' (dim=%d)", collection, VECTOR_DIM)
             
-            # Create index for run_id filtering
+        # Ensure index for run_id filtering exists (even for existing collections)
+        try:
             await client.create_payload_index(
                 collection_name=collection,
                 field_name="run_id",
                 field_schema=models.PayloadSchemaType.KEYWORD,
             )
-            logger.info("Created payload index on 'run_id'")
+            logger.info("Ensured payload index on 'run_id'")
+        except Exception as idx_exc:
+            # Safe to ignore if index already exists
+            logger.debug("Payload index might already exist: %s", idx_exc)
+            
         return True
     except Exception as exc:
         logger.warning("Qdrant unavailable: %s — continuing without RAG.", exc)
