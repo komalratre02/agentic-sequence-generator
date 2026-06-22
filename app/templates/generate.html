@@ -102,8 +102,9 @@
             <label class="form-label" for="company_url">Company Website URL <span style="font-weight:400; color:var(--text-muted); font-size:0.76rem;">(optional — enables live RAG)</span></label>
             <input class="form-control" id="company_url" name="company_url" type="url" placeholder="e.g. https://stripe.com"
               style="font-family: var(--mono); font-size: 0.82rem;" />
-            <div style="margin-top:4px; font-size:0.7rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">
-              🌐 We'll scrape the site, chunk it, and feed it into RAG for hyper-personalised emails
+            <div style="margin-top:6px; font-size:0.72rem; color:var(--text-muted); line-height: 1.4; padding: 6px; border-left: 2px solid var(--border); background: var(--surface-2);">
+              <strong>ℹ️ Note for Reviewers:</strong> 
+              Live scraping works best locally (residential IP). On this cloud deployment, enterprise WAFs (like Stripe's Cloudflare) will block the scraper, returning 0 chunks. For the best demo on this link, try <code>https://basecamp.com</code>.
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="width:100%; justify-content:center;">
