@@ -108,7 +108,29 @@ async def generate_sequence(
         raise HTTPException(status_code=500, detail=f"Workflow error: {exc}")
 
     emails = final_state.get("emails", {})
+    if not isinstance(emails, dict):
+        logger.warning("Final state 'emails' is not a dict (%s) in non-streaming. Coercing...", type(emails))
+        if isinstance(emails, list):
+            merged = {}
+            for item in emails:
+                if isinstance(item, dict):
+                    merged.update(item)
+            emails = merged
+        else:
+            emails = {}
+
     review = final_state.get("review", {})
+    if not isinstance(review, dict):
+        logger.warning("Final state 'review' is not a dict (%s) in non-streaming. Coercing...", type(review))
+        if isinstance(review, list):
+            merged = {}
+            for item in review:
+                if isinstance(item, dict):
+                    merged.update(item)
+            review = merged
+        else:
+            review = {}
+
     score  = float(review.get("overall_score", 0.0))
 
     metrics.record_output(
@@ -203,7 +225,29 @@ async def generate_stream(
             )
 
             emails = final_state.get("emails", {})
+            if not isinstance(emails, dict):
+                logger.warning("Final state 'emails' is not a dict (%s). Coercing...", type(emails))
+                if isinstance(emails, list):
+                    merged = {}
+                    for item in emails:
+                        if isinstance(item, dict):
+                            merged.update(item)
+                    emails = merged
+                else:
+                    emails = {}
+
             review = final_state.get("review", {})
+            if not isinstance(review, dict):
+                logger.warning("Final state 'review' is not a dict (%s). Coercing...", type(review))
+                if isinstance(review, list):
+                    merged = {}
+                    for item in review:
+                        if isinstance(item, dict):
+                            merged.update(item)
+                    review = merged
+                else:
+                    review = {}
+
             score  = float(review.get("overall_score", 0.0))
 
             metrics.record_output(

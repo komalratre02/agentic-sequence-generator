@@ -77,8 +77,17 @@ async def run_research(
 
     try:
         brief = json.loads(response.content)
-    except json.JSONDecodeError:
-        logger.error("Research agent returned invalid JSON:\n%s", response.content)
+        if isinstance(brief, list):
+            logger.warning("Research Agent returned a list instead of a dict. Merging elements...")
+            merged = {}
+            for item in brief:
+                if isinstance(item, dict):
+                    merged.update(item)
+            brief = merged
+        if not isinstance(brief, dict):
+            raise ValueError("Parsed JSON is not a dictionary")
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.error("Research agent returned invalid/uncoercible JSON (%s):\n%s", exc, response.content)
         brief = {
             "company_summary": f"{company} is a B2B software company.",
             "industry": "SaaS",

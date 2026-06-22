@@ -174,8 +174,17 @@ async def run_planner(
 
     try:
         plan = json.loads(response.content)
-    except json.JSONDecodeError:
-        logger.error("Planner returned invalid JSON:\n%s", response.content)
+        if isinstance(plan, list):
+            logger.warning("Planner returned a list instead of a dict. Merging elements...")
+            merged = {}
+            for item in plan:
+                if isinstance(item, dict):
+                    merged.update(item)
+            plan = merged
+        if not isinstance(plan, dict):
+            raise ValueError("Parsed JSON is not a dictionary")
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.error("Planner returned invalid/uncoercible JSON (%s):\n%s", exc, response.content)
         # Provide a sane fallback so the workflow doesn't crash
         plan = {
             "campaign_goal": goal,

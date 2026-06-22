@@ -63,8 +63,17 @@ async def run_reviewer(
 
     try:
         evaluation = json.loads(response.content)
-    except json.JSONDecodeError:
-        logger.error("Reviewer returned invalid JSON:\n%s", response.content)
+        if isinstance(evaluation, list):
+            logger.warning("Reviewer returned a list instead of a dict. Merging elements...")
+            merged = {}
+            for item in evaluation:
+                if isinstance(item, dict):
+                    merged.update(item)
+            evaluation = merged
+        if not isinstance(evaluation, dict):
+            raise ValueError("Parsed JSON is not a dictionary")
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.error("Reviewer returned invalid/uncoercible JSON (%s):\n%s", exc, response.content)
         evaluation = {
             "overall_score": 5.0,
             "personalization_score": 5.0,

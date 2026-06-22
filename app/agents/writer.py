@@ -72,8 +72,17 @@ async def run_writer(
 
     try:
         emails = json.loads(response.content)
-    except json.JSONDecodeError:
-        logger.error("Writer returned invalid JSON:\n%s", response.content)
+        if isinstance(emails, list):
+            logger.warning("Writer returned a list of dicts instead of a single dict. Merging elements...")
+            merged = {}
+            for item in emails:
+                if isinstance(item, dict):
+                    merged.update(item)
+            emails = merged
+        if not isinstance(emails, dict):
+            raise ValueError("Parsed JSON is not a dictionary")
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.error("Writer returned invalid/uncoercible JSON (%s):\n%s", exc, response.content)
         emails = {
             "email_subject": "Quick question",
             "email_body": response.content[:500],
