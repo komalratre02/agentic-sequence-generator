@@ -282,6 +282,15 @@ async def scrape_and_ingest(
         len(all_text_parts), len(all_chunks), company_url,
     )
 
+    # FOOLPROOF FALLBACK FOR RENDER DEMO: Save raw chunks to disk
+    try:
+        import os, json
+        os.makedirs("/tmp/rag_fallback", exist_ok=True)
+        with open(f"/tmp/rag_fallback/{run_id}.json", "w") as f:
+            json.dump(all_chunks, f)
+    except Exception as e:
+        logger.error("Failed to save fallback data: %s", e)
+
     # ── Embed & upsert ──────────────────────────────────────────────────
     points: list[PointStruct] = []
 
