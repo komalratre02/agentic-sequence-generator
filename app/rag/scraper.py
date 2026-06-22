@@ -272,14 +272,15 @@ async def scrape_and_ingest(
     # ── Embed & upsert ──────────────────────────────────────────────────
     points: list[PointStruct] = []
 
-    # Embed in parallel for speed
-    logger.info("Embedding %d chunks in parallel...", len(all_chunks))
-    embed_tasks = [embed_text(chunk["text"]) for chunk in all_chunks]
-    vectors = await asyncio.gather(*embed_tasks, return_exceptions=True)
+    # Batch embed: single API call for ALL chunks (prevents rate limits)
+    logger.info("Batch embedding %d chunks in a single API call...", len(all_chunks))
+    from app.rag.embeddings import embed_batch
+    chunk_texts = [chunk["text"] for chunk in all_chunks]
+    vectors = await embed_batch(chunk_texts)
 
     for chunk, vector in zip(all_chunks, vectors):
-        if isinstance(vector, Exception) or not vector:
-            logger.warning("Embedding failed for chunk from %s: %s", chunk["source"], vector)
+        if not vector:
+            logger.warning("Embedding failed for chunk from %s", chunk["source"])
             continue
 
         points.append(
