@@ -85,8 +85,8 @@
         <div style="display:flex;flex-direction:column;gap:1.15rem;">
           <div class="form-group">
             <label class="form-label" for="goal">Campaign Goal</label>
-            <input class="form-control" id="goal" name="goal" type="text" placeholder="e.g. Pitch scalable vector infrastructure for Magenta AI"
-              required value="Pitch scalable vector infrastructure for Magenta AI" />
+            <textarea class="form-control" id="goal" name="goal" rows="2" style="resize: none; font-family: inherit; line-height: 1.4;" placeholder="e.g. Pitch scalable vector infrastructure for Magenta AI"
+              required>Pitch scalable vector infrastructure for Magenta AI</textarea>
           </div>
           <div class="form-group">
             <label class="form-label" for="persona">Target Persona</label>
@@ -270,7 +270,7 @@
             setMeta('scraper', 'Site may block bots — continuing with LLM knowledge');
           } else {
             setStep('scraper', 'done active', '✓ Complete');
-            setMeta('scraper', `${event.chunks} chunks ingested`);
+            setMeta('scraper', `${event.chunks} chunk${event.chunks === 1 ? '' : 's'} ingested`);
           }
         } else {
           setStep(event.agent, 'done active', '✓ Complete');
