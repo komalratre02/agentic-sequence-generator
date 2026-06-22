@@ -55,6 +55,8 @@ class GeminiProvider(LLMProvider):
         self._fallback_model = fallback_model or settings.gemini_fallback_model
         self._active_model   = self._primary_model
         self._client = genai.Client(api_key=settings.google_api_key)
+        self._is_degraded: bool = False
+        self._degraded_since: float = 0.0
 
     def model_name(self) -> str:
         return self._active_model
@@ -64,9 +66,9 @@ class GeminiProvider(LLMProvider):
     # ------------------------------------------------------------------
 
     @retry(
-        retry=retry_if_exception_type(Exception),
+        retry=retry_if_exception_type((asyncio.TimeoutError,)),
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=20),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
@@ -130,27 +132,25 @@ class GeminiProvider(LLMProvider):
     # ------------------------------------------------------------------
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
+        # If we are in degraded mode, skip the primary model to save time
+        if self._is_degraded:
+            if time.monotonic() - self._degraded_since > 300:  # 5 minute cooldown
+                logger.info("Gemini degraded cooldown expired. Attempting primary model again.")
+                self._is_degraded = False
+            else:
+                self._active_model = self._fallback_model
+                return await self._call_model(self._fallback_model, request)
+
         try:
             self._active_model = self._primary_model
             return await self._call_model(self._primary_model, request)
 
         except ClientError as exc:
-            status = getattr(exc, "status_code", None)
-
-            # Rate limit: don't switch model immediately
-            if status == 429:
-                logger.warning(
-                    "Rate limit hit on %s. Retrying later.",
-                    self._primary_model,
-                )
-                raise
-
             logger.warning(
-                "Primary model %s failed (%s). Falling back to %s.",
-                self._primary_model,
-                exc,
-                self._fallback_model,
+                "Primary Gemini model %s failed (%s). Entering degraded mode and falling back to %s.",
+                self._primary_model, str(exc)[:200], self._fallback_model,
             )
-
+            self._is_degraded = True
+            self._degraded_since = time.monotonic()
             self._active_model = self._fallback_model
             return await self._call_model(self._fallback_model, request)

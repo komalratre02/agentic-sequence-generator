@@ -54,6 +54,8 @@ class GroqProvider(LLMProvider):
             api_key=settings.groq_api_key,
             timeout=settings.llm_timeout_seconds,
         )
+        self._is_degraded: bool = False
+        self._degraded_since: float = 0.0
 
     def model_name(self) -> str:
         return self._active_model
@@ -63,9 +65,9 @@ class GroqProvider(LLMProvider):
     # ------------------------------------------------------------------
 
     @retry(
-        retry=retry_if_exception_type((RateLimitError, APITimeoutError)),
+        retry=retry_if_exception_type((APITimeoutError,)),
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=20),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
@@ -115,14 +117,25 @@ class GroqProvider(LLMProvider):
     # ------------------------------------------------------------------
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
+        # If we are in degraded mode, skip the primary model to save time
+        if self._is_degraded:
+            if time.monotonic() - self._degraded_since > 300:  # 5 minute cooldown
+                logger.info("Groq degraded cooldown expired. Attempting primary model again.")
+                self._is_degraded = False
+            else:
+                self._active_model = self._fallback_model
+                return await self._call_model(self._fallback_model, request)
+
         try:
             self._active_model = self._primary_model
             return await self._call_model(self._primary_model, request)
 
         except (RateLimitError, APIStatusError) as exc:
             logger.warning(
-                "Primary Groq model %s failed (%s). Falling back to %s.",
-                self._primary_model, exc, self._fallback_model,
+                "Primary Groq model %s failed (%s). Entering degraded mode and falling back to %s.",
+                self._primary_model, str(exc)[:200], self._fallback_model,
             )
+            self._is_degraded = True
+            self._degraded_since = time.monotonic()
             self._active_model = self._fallback_model
             return await self._call_model(self._fallback_model, request)
