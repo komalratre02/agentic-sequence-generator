@@ -325,4 +325,8 @@ async def scrape_and_ingest(
             details=f"{len(points)} chunks ingested from {company_url}"
         )
 
+    # Brief cooldown to let Gemini API quota recover before retrieval embed
+    if len(points) > 0:
+        await asyncio.sleep(2.0)
+
     return len(points)
