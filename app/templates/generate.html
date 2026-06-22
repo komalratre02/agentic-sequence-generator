@@ -103,8 +103,8 @@
             <input class="form-control" id="company_url" name="company_url" type="url" placeholder="e.g. https://stripe.com"
               style="font-family: var(--mono); font-size: 0.82rem;" />
             <div style="margin-top:6px; font-size:0.72rem; color:var(--text-muted); line-height: 1.4; padding: 6px; border-left: 2px solid var(--border); background: var(--surface-2);">
-              <strong>ℹ️ Note for Reviewers:</strong> 
-              Live scraping works best locally (residential IP). On this cloud deployment, enterprise WAFs (like Stripe's Cloudflare) will block the scraper, returning 0 chunks. For the best demo on this link, try <code>https://basecamp.com</code>.
+              <strong>ℹ️ Cloud Deployment Note:</strong> 
+              Live web scraping is optimized for residential networks. On this deployed app, enterprise WAFs may block our data-center IP. If a block is detected, the agent will gracefully fall back to its internal knowledge base. Clone the repo to run with full live RAG.
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="width:100%; justify-content:center;">
