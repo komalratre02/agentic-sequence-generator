@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 from qdrant_client.models import PointStruct, models
 
 from app.config import get_settings
-from app.rag.embeddings import embed_text
+from app.rag.embeddings import embed_text, embed_batch
 from app.rag.qdrant_client import get_qdrant_client, ensure_collection
 
 logger = logging.getLogger(__name__)
