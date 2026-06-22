@@ -165,23 +165,29 @@ async def generate_stream(
     llm = get_router()
     metrics.record_input(req.goal, req.persona, req.company)
 
-    # Scrape company website if URL provided
+    # ── PARALLEL EXECUTION: Scrape and Plan run concurrently ──
+    scrape_task = None
     if req.company_url:
-        try:
-            chunks_ingested = await scrape_and_ingest(
-                req.company_url, run_id, progress_callback=on_progress, metrics=metrics
-            )
-            logger.info("Scraped %d chunks from %s for run %s", chunks_ingested, req.company_url, run_id)
-        except Exception as exc:
-            logger.warning("Scrape failed for %s: %s — continuing without scraped data.", req.company_url, exc)
-            on_progress({
-                "type": "agent_complete",
-                "agent": "scraper",
-                "label": "Website Scraper",
-                "model": "httpx+bs4",
-                "chunks": 0,
-                "warning": f"Scrape error: {exc}",
-            })
+        async def background_scrape():
+            try:
+                chunks = await scrape_and_ingest(
+                    req.company_url, run_id, progress_callback=on_progress, metrics=metrics
+                )
+                logger.info("Scraped %d chunks from %s for run %s", chunks, req.company_url, run_id)
+                return chunks
+            except Exception as exc:
+                logger.warning("Scrape failed for %s: %s", req.company_url, exc)
+                on_progress({
+                    "type": "agent_complete",
+                    "agent": "scraper",
+                    "label": "Website Scraper",
+                    "model": "httpx+bs4",
+                    "chunks": 0,
+                    "warning": f"Scrape error: {exc}",
+                })
+                return 0
+                
+        scrape_task = asyncio.create_task(background_scrape())
 
     async def run_and_save():
         """Execute workflow and persist results."""
@@ -193,6 +199,7 @@ async def generate_stream(
                 llm=llm,
                 metrics=metrics,
                 run_id=run_id,
+                scrape_task=scrape_task,
             )
 
             emails = final_state.get("emails", {})

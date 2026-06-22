@@ -55,6 +55,7 @@ class WorkflowState(TypedDict):
     max_revisions:  int
     llm:            LLMProvider
     metrics:        MetricsCollector
+    scrape_task:    Any  # asyncio.Task
 
     # Errors
     errors: Annotated[list[str], operator.add]
@@ -83,6 +84,15 @@ async def planner_node(state: WorkflowState) -> dict[str, Any]:
 
 
 async def research_node(state: WorkflowState) -> dict[str, Any]:
+    # Synchronization Barrier: wait for the parallel scraper task to finish
+    scrape_task = state.get("scrape_task")
+    if scrape_task and not scrape_task.done():
+        logger.info("Research Agent waiting for parallel Scraper task to finish...")
+        try:
+            await scrape_task
+        except Exception:
+            pass # Errors are handled in the task
+
     state["metrics"].emit_progress({
         "type": "agent_start", "agent": "research", "label": "Research Agent (RAG)",
     })
@@ -211,6 +221,7 @@ async def run_workflow(
     llm: LLMProvider,
     metrics: MetricsCollector,
     run_id: str | None = None,
+    scrape_task: Any = None,
 ) -> WorkflowState:
     """
     Execute the full LangGraph workflow and return the final state.
@@ -231,6 +242,7 @@ async def run_workflow(
         "max_revisions":  settings.max_revision_cycles,
         "llm":            llm,
         "metrics":        metrics,
+        "scrape_task":    scrape_task,
         "errors":         [],
     }
 
