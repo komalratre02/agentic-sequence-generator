@@ -29,23 +29,17 @@ async def retrieve_context(
     query: str,
     top_k: int = 4,
     run_id: Optional[str] = None,
-) -> list[RetrievedChunk]:
+) -> tuple[list[RetrievedChunk], str]:
     """
-    Embed the query and retrieve the top-k most relevant chunks from Qdrant.
-
-    If run_id is provided, results are filtered to only chunks belonging to
-    that run (i.e. scraped content for this specific workflow execution).
-
-    Returns an empty list if Qdrant is unavailable or no results match.
+    Returns (chunks, debug_reason)
     """
     client = get_qdrant_client()
     if client is None:
-        logger.info("Qdrant not available — returning empty context.")
-        return []
+        return [], "Qdrant not configured"
 
     vector = await embed_text(query)
     if not vector:
-        return []
+        return [], "Query embedding failed (Check Gemini API limits)"
 
     # Build optional filter for run_id-scoped retrieval
     query_filter = None
@@ -79,12 +73,13 @@ async def retrieve_context(
                 )
             )
 
-        logger.info("RAG retrieved %d chunks for query: %s", len(chunks), query[:60])
-        return chunks
+        if not chunks:
+            return [], f"Qdrant returned 0 matches for run_id={run_id}"
+
+        return chunks, "Success"
 
     except Exception as exc:
-        logger.warning("RAG retrieval failed: %s", exc)
-        return []
+        return [], f"Qdrant search error: {exc}"
 
 
 def format_context(chunks: list[RetrievedChunk]) -> str:

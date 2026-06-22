@@ -35,10 +35,16 @@ async def run_research(
 
     # Step 1: Retrieve RAG context (scoped to this run's scraped data)
     query = f"{company} {persona} pain points challenges industry"
-    chunks = await retrieve_context(query, top_k=6, run_id=run_id or None)
+    chunks, debug_reason = await retrieve_context(query, top_k=6, run_id=run_id or None)
     context_text = format_context(chunks)
 
-    metrics.record_rag(used=bool(chunks), chunks=len(chunks))
+    if not chunks:
+        metrics.record_rag(used=False, chunks=0)
+        logger.warning("RAG Diagnostic: %s", debug_reason)
+        # We will write this debug reason into the context so the user can see it in the UI
+        context_text = f"[DEBUG: RAG Failed - {debug_reason}]\n" + context_text
+    else:
+        metrics.record_rag(used=True, chunks=len(chunks))
 
     # Step 2: Synthesise
     user_prompt = (
