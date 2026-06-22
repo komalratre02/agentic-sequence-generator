@@ -102,6 +102,15 @@ async def embed_batch(texts: list[str]) -> list[list[float]]:
                 ),
             )
             vectors = [list(emb.values) for emb in response.embeddings]
+            
+            # SDK BUG WORKAROUND: If the SDK concatenates the list and returns 1 vector, 
+            # fallback to individual embeddings to ensure all chunks are processed.
+            if len(vectors) == 1 and len(texts) > 1:
+                logger.warning("SDK returned 1 vector for %d texts. Falling back to individual embeddings.", len(texts))
+                tasks = [embed_text(t) for t in texts]
+                vectors = await asyncio.gather(*tasks)
+                return vectors
+
             logger.info("Batch embedded %d texts in a single API call", len(vectors))
             return vectors
 
