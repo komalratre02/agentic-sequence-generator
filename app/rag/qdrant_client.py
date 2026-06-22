@@ -48,6 +48,20 @@ async def ensure_collection() -> bool:
     try:
         existing = await client.get_collections()
         names = [c.name for c in existing.collections]
+        
+        if collection in names:
+            # Verify dimensions match current embedding model
+            info = await client.get_collection(collection_name=collection)
+            existing_dim = info.config.params.vectors.size
+            if existing_dim != VECTOR_DIM:
+                logger.warning(
+                    "Qdrant collection '%s' has dim=%d but embedding model needs dim=%d. "
+                    "Recreating collection...",
+                    collection, existing_dim, VECTOR_DIM,
+                )
+                await client.delete_collection(collection_name=collection)
+                names.remove(collection)
+        
         if collection not in names:
             await client.create_collection(
                 collection_name=collection,
