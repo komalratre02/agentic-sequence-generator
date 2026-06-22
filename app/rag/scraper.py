@@ -271,7 +271,8 @@ async def scrape_and_ingest(
             
         if metrics:
             latency_ms = (time.time() - start_time) * 1000
-            metrics.record_custom_trace("Scraper", "Pre-seeded JSON + Gemini Embed", latency_ms, f"{len(points)} chunks injected from pre-seeded data")
+            chunk_word = "chunk" if len(points) == 1 else "chunks"
+            metrics.record_custom_trace("Scraper", "Pre-seeded JSON + Gemini Embed", latency_ms, f"{len(points)} {chunk_word} injected from pre-seeded data")
             
         if len(points) > 0:
             await asyncio.sleep(2.0)
@@ -399,11 +400,12 @@ async def scrape_and_ingest(
 
     if metrics:
         latency_ms = (time.time() - start_time) * 1000
+        chunk_word = "chunk" if len(points) == 1 else "chunks"
         metrics.record_custom_trace(
             agent_name="Scraper",
             model="httpx + Gemini Embed",
             latency_ms=latency_ms,
-            details=f"{len(points)} chunks ingested from {company_url}"
+            details=f"{len(points)} {chunk_word} ingested from {company_url}"
         )
 
     # Brief cooldown to let Gemini API quota recover before retrieval embed
