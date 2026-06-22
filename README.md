@@ -44,8 +44,11 @@ graph TD
 
 - **Live RAG Ingestion**: Dynamically scrapes target company URLs, chunks text, generates embeddings, and performs strict `run_id` scoped semantic retrieval to ensure total data isolation per execution.
 - **Agentic Autonomy**: Utilizes a cyclic LangGraph workflow. The Reviewer agent deterministically computes QA scores in Python and routes substandard drafts back to the Writer for autonomous correction.
-- **Enterprise Resilience**: Implements the Circuit Breaker pattern across LLM providers. Automatic failover from Groq to Gemini ensures high availability during upstream API outages.
-- **Server-Sent Events (SSE)**: Streams multi-agent execution states and intermediate metrics in real-time to the client frontend.
+- **Enterprise Resilience & Failover**:
+  - **Smart LLM Routing**: Circuit Breaker pattern with automatic failover from Groq to Gemini ensures high availability during upstream API outages.
+  - **WAF Bypass & Pre-Seeding**: Intercepts cloud deployment Web Application Firewall (WAF) blocks (e.g., Cloudflare) and dynamically injects high-fidelity pre-seeded data for critical targets (like Deutsche Telekom and Stripe) to guarantee demo integrity.
+  - **Vector Database Disk Fallback**: Architected to survive total Qdrant Cloud outages. Instantly catches connection drops and serves exact RAG contexts from ephemeral local `/tmp` disk storage.
+- **Server-Sent Events (SSE)**: Streams multi-agent execution states, latency metrics, and network intercept traces in real-time to the client frontend.
 
 ## Quickstart
 
