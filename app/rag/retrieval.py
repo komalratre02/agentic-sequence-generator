@@ -57,7 +57,6 @@ async def retrieve_context(
         results = await client.search(
             collection_name=settings.qdrant_collection,
             query_vector=vector,
-            query_filter=query_filter,
             limit=top_k,
             with_payload=True,
         )
