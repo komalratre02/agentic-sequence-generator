@@ -356,7 +356,6 @@ async def scrape_and_ingest(
 
     # Batch embed: single API call for ALL chunks (prevents rate limits)
     logger.info("Batch embedding %d chunks in a single API call...", len(all_chunks))
-    from app.rag.embeddings import embed_batch
     chunk_texts = [chunk["text"] for chunk in all_chunks]
     vectors = await embed_batch(chunk_texts)
 
