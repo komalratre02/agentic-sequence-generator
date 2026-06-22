@@ -239,6 +239,16 @@ async def scrape_and_ingest(
         # 1. Fetch homepage
         home_html = await _fetch_page(client, company_url)
         if home_html:
+            # Detect Cloudflare/WAF blocks instantly
+            lower_html = home_html.lower()
+            if any(waf in lower_html for waf in ["checking your browser", "cloudflare", "enable javascript and cookies", "just a moment..."]):
+                logger.warning("WAF Block detected for %s", company_url)
+                if metrics:
+                    metrics.record_custom_trace("Scraper", "httpx", (time.time()-start_time)*1000, "Blocked by Enterprise WAF (Cloudflare)")
+                if progress_callback:
+                    progress_callback({"type": "agent_complete", "agent": "scraper", "label": "Website Scraper", "chunks": 0})
+                return 0
+
             home_text = _clean_text(home_html)
             if home_text:
                 all_text_parts.append((company_url, home_text))
