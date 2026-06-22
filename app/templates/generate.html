@@ -85,26 +85,26 @@
         <div style="display:flex;flex-direction:column;gap:1.15rem;">
           <div class="form-group">
             <label class="form-label" for="goal">Campaign Goal</label>
-            <input class="form-control" id="goal" name="goal" type="text" placeholder="e.g. Book meetings with CTOs"
-              required value="Book meetings with CTOs" />
+            <input class="form-control" id="goal" name="goal" type="text" placeholder="e.g. Sell enterprise AI infrastructure"
+              required value="Sell enterprise AI infrastructure" />
           </div>
           <div class="form-group">
             <label class="form-label" for="persona">Target Persona</label>
-            <input class="form-control" id="persona" name="persona" type="text" placeholder="e.g. CTO" required
-              value="CTO" />
+            <input class="form-control" id="persona" name="persona" type="text" placeholder="e.g. VP of Engineering" required
+              value="VP of Engineering" />
           </div>
           <div class="form-group">
             <label class="form-label" for="company">Target Company</label>
-            <input class="form-control" id="company" name="company" type="text" placeholder="e.g. Acme Inc" required
-              value="Acme Inc" />
+            <input class="form-control" id="company" name="company" type="text" placeholder="e.g. Deutsche Telekom" required
+              value="Deutsche Telekom" />
           </div>
           <div class="form-group">
             <label class="form-label" for="company_url">Company Website URL <span style="font-weight:400; color:var(--text-muted); font-size:0.76rem;">(optional — enables live RAG)</span></label>
-            <input class="form-control" id="company_url" name="company_url" type="url" placeholder="e.g. https://stripe.com"
-              style="font-family: var(--mono); font-size: 0.82rem;" />
+            <input class="form-control" id="company_url" name="company_url" type="url" placeholder="e.g. https://telekom.com"
+              value="https://telekom.com" style="font-family: var(--mono); font-size: 0.82rem;" />
             <div style="margin-top:6px; font-size:0.72rem; color:var(--text-muted); line-height: 1.4; padding: 6px; border-left: 2px solid var(--border); background: var(--surface-2);">
               <strong>ℹ️ Cloud Deployment Note:</strong> 
-              Live web scraping is optimized for residential networks. On this deployed app, enterprise WAFs may block our data-center IP. To guarantee a flawless live RAG demo on this deployed link, use one of our pre-scraped test domains: <code>stripe.com</code>, <code>linear.app</code>, or <code>posthog.com</code>.
+              Live web scraping is optimized for residential networks. On this deployed app, enterprise WAFs may block our data-center IP. To guarantee a flawless live RAG demo on this deployed link, use one of our pre-scraped test domains: <code>telekom.com</code>, <code>stripe.com</code>, or <code>linear.app</code>.
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="width:100%; justify-content:center;">
@@ -123,14 +123,14 @@
             <div id="errorSuggestion" style="display:none; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-top:8px;">
               <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:8px;">Suggestions to fix:</span>
               <div style="display:flex; flex-direction:column; gap:5px;">
-                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Book meetings with CTOs for our developer platform', 'CTO', 'Acme Developer Corp')">
+                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Sell enterprise cloud & 5G infrastructure', 'CIO', 'Deutsche Telekom', 'https://telekom.com')">
+                  💡 <strong>Enterprise IT:</strong> "Sell enterprise cloud & 5G infrastructure"
+                </button>
+                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Book meetings with CTOs for our developer platform', 'CTO', 'Stripe', 'https://stripe.com')">
                   💡 <strong>Sales:</strong> "Book meetings with CTOs for our developer platform"
                 </button>
-                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Drive webinar registrations for our marketing SaaS launch', 'Marketing Director', 'SaaS Growth Inc')">
-                  💡 <strong>Marketing:</strong> "Drive webinar registrations for our marketing SaaS launch"
-                </button>
-                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Reach out to senior backend developers in London', 'Senior Software Engineer', 'Acme Engineering')">
-                  💡 <strong>Recruitment:</strong> "Reach out to senior backend developers in London"
+                <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:8px 12px; font-size:0.78rem; text-align:left; width: 100%;" onclick="fillExample('Drive webinar registrations for our SaaS launch', 'Marketing Director', 'Linear', 'https://linear.app')">
+                  💡 <strong>Marketing:</strong> "Drive webinar registrations for our SaaS launch"
                 </button>
               </div>
             </div>
@@ -238,10 +238,11 @@
     if (el) el.textContent = text;
   }
 
-  function fillExample(goal, persona, company) {
+  function fillExample(goal, persona, company, url) {
     document.getElementById('goal').value = goal;
     document.getElementById('persona').value = persona;
     document.getElementById('company').value = company;
+    document.getElementById('company_url').value = url || '';
     errorBox.style.display = 'none';
     steps.forEach(s => { setStep(s, '', 'Waiting…'); setMeta(s, ''); });
   }
